@@ -1,32 +1,47 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const SerialPort = require('serialport');
+const { app, BrowserWindow, ipcMain } = require("electron");
+const SerialPort = require("serialport");
 
 let mainWindow;
 
-app.whenReady().then(() => {
-    mainWindow = new BrowserWindow({
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
-        }
-    });
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
 
-    mainWindow.loadFile('index.html');
+  mainWindow.loadFile("index.html");
+}
 
-    SerialPort.list().then(ports => {
-        mainWindow.webContents.send('port-list', ports);
-    });
+app.whenReady().then(createWindow);
+
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
 });
 
-ipcMain.on('connect-to-port', (event, path) => {
-    const port = new SerialPort(path, { baudRate: 9600 });
-
-    port.on('data', (data) => {
-        mainWindow.webContents.send('serial-data', data.toString());
-    });
-
-    port.on('error', (err) => {
-        mainWindow.webContents.send('serial-error', err.message);
-    });
+app.on("activate", function () {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
+let serialPort;
+
+ipcMain.on("connect", (event, port) => {
+  serialPort = new SerialPort(port, { baudRate: 9600 });
+
+  serialPort.on("data", (data) => {
+    event.reply("data", data.toString());
+  });
+
+  serialPort.on("error", (error) => {
+    event.reply("error", error.message);
+  });
+});
+
+ipcMain.on("disconnect", () => {
+  if (serialPort) {
+    serialPort.close();
+  }
+});

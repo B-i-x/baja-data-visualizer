@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Serial Monitor</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Serial Monitor</h1>
-    <div>
-        <select id="portList"></select>
-        <button id="connectBtn">Connect</button>
-    </div>
-    <textarea id="output" rows="20" cols="50"></textarea>
 
-    <script src="index.js"></script>
-</body>
+    <label for="ports">Select port:</label>
+    <select id="ports"></select>
+
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+
+    <pre id="output"></pre>
+
+    <script src="./renderer.js"></script>
+  </body>
 </html>
