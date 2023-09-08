@@ -1,31 +1,47 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('node:path')
+const { app, BrowserWindow, ipcMain } = require("electron");
+const SerialPort = require("serialport");
 
-const createWindow = () => {
-  const win = new BrowserWindow({
+let mainWindow;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-        preload: path.join(__dirname, 'preload.js')
-      }
-  })
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
 
-  win.loadFile('index.html')
+  mainWindow.loadFile("index.html");
 }
 
-app.whenReady().then(() => {
-    ipcMain.handle('ping', () => 'pong')
-    createWindow()
+app.whenReady().then(createWindow);
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
-  })
-})
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
+});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
+app.on("activate", function () {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+let serialPort;
+
+ipcMain.on("connect", (event, port) => {
+  serialPort = new SerialPort(port, { baudRate: 9600 });
+
+  serialPort.on("data", (data) => {
+    event.reply("data", data.toString());
+  });
+
+  serialPort.on("error", (error) => {
+    event.reply("error", error.message);
+  });
+});
+
+ipcMain.on("disconnect", () => {
+  if (serialPort) {
+    serialPort.close();
   }
-})
+});
