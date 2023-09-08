@@ -1,31 +1,32 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('node:path')
+const { app, BrowserWindow, ipcMain } = require('electron');
+const SerialPort = require('serialport');
 
-const createWindow = () => {
-  const win = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-        preload: path.join(__dirname, 'preload.js')
-      }
-  })
-
-  win.loadFile('index.html')
-}
+let mainWindow;
 
 app.whenReady().then(() => {
-    ipcMain.handle('ping', () => 'pong')
-    createWindow()
+    mainWindow = new BrowserWindow({
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
-  })
-})
+    mainWindow.loadFile('index.html');
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
-})
+    SerialPort.list().then(ports => {
+        mainWindow.webContents.send('port-list', ports);
+    });
+});
+
+ipcMain.on('connect-to-port', (event, path) => {
+    const port = new SerialPort(path, { baudRate: 9600 });
+
+    port.on('data', (data) => {
+        mainWindow.webContents.send('serial-data', data.toString());
+    });
+
+    port.on('error', (err) => {
+        mainWindow.webContents.send('serial-error', err.message);
+    });
+});
+
